@@ -1,5 +1,5 @@
 .idea/
 dist/*
 build/*
-linex2.egg-info/*
+linex2metaspace.egg-info/*
 *.pyc
