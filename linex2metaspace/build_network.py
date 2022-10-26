@@ -140,7 +140,7 @@ def ion_weight_graph(g: nx.MultiGraph, sum_species: pd.Series, bootstraps: int) 
         for d1 in gn.nodes[u]['dataname']:
             for d2 in gn.nodes[v]['dataname']:
                 srt = sorted([d1, d2])
-                ig.add_edge(srt[0], srt[1], bootstrap=d['bootstrap'])
+                ig.add_edge(srt[0], srt[1], **d)
 
     ign = nx.Graph()
 
@@ -148,14 +148,25 @@ def ion_weight_graph(g: nx.MultiGraph, sum_species: pd.Series, bootstraps: int) 
         ign.add_node(ind)
 
     test_l = []
-    for u, v in ig.edges():
+    for u, v, d in ig.edges(data=True):
         srt = sorted([u, v])
         if tuple(sorted((srt[0], srt[1]))) in test_l:
-            pass
+            ign[srt[0]][srt[1]]['enzyme_id'] += d['enzyme_id'].split(';')
+            ign[srt[0]][srt[1]]['enzyme_id'] = list(set(ign[srt[0]][srt[1]]['enzyme_id']))
+
+            ign[srt[0]][srt[1]]['enzyme_gene_name'] += d['enzyme_gene_name'].split(', ')
+            ign[srt[0]][srt[1]]['enzyme_gene_name'] = list(set(ign[srt[0]][srt[1]]['enzyme_gene_name']))
+
+            ign[srt[0]][srt[1]]['enzyme_uniprot'] += d['enzyme_uniprot'].split(', ')
+            ign[srt[0]][srt[1]]['enzyme_uniprot'] = list(set(ign[srt[0]][srt[1]]['enzyme_uniprot']))
         else:
             test_l.append(tuple(sorted((srt[0], srt[1]))))
             ign.add_edge(srt[0], srt[1],
-                         weight=len(set([x['bootstrap'] for x in dict(ig[u][v]).values()])) / bootstraps)
+                         weight=len(set([x['bootstrap'] for x in dict(ig[u][v]).values()])) / bootstraps,
+                         enzyme_id=d['enzyme_id'].split(';'),
+                         enzyme_gene_name=d['enzyme_gene_name'].split(', '),
+                         enzyme_uniprot=d['enzyme_uniprot'].split(', ')
+                         )
 
     ign.remove_edges_from(nx.selfloop_edges(ign))
     return ign
