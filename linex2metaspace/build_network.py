@@ -1,8 +1,10 @@
 from typing import List, Dict, Union
 import random
+from collections import defaultdict
 
 import networkx as nx
 import pandas as pd
+import numpy as np
 import linex2 as lx2
 
 
@@ -126,6 +128,7 @@ def lipid_ion_graph(g: Union[nx.Graph, nx.MultiGraph],
 def ion_weight_graph(g: nx.MultiGraph, sum_species: pd.Series, bootstraps: int) -> nx.Graph:
     gn = g.copy()
 
+    # Add dataname to nodes
     for ion, ll in sum_species.items():
         for lip in ll:
             if lip in gn.nodes.keys():
@@ -134,18 +137,41 @@ def ion_weight_graph(g: nx.MultiGraph, sum_species: pd.Series, bootstraps: int) 
                 else:
                     gn.nodes[lip]['dataname'] = [ion]
 
+    # Make ion graph
     ig = nx.MultiGraph()
-
     for u, v, d in gn.edges(data=True):
         for d1 in gn.nodes[u]['dataname']:
             for d2 in gn.nodes[v]['dataname']:
                 srt = sorted([d1, d2])
                 ig.add_edge(srt[0], srt[1], **d)
 
-    ign = nx.Graph()
+    # Weight annotation based on edgecount
+    node_weight_dict = {} # Key is lipid value is dict of weight and dataname
+    ion_weight_dict = {}
+    for n in gn.nodes:
+        node_weight_dict[n] = {'weight': 0, 'dataname': gn.nodes[n]['dataname']}
+        bt_dict = defaultdict(int)
+        for val in gn[n].values():
+            for x in set(val.keys()):
+                bt_dict[x] += 1
 
+        if(len(bt_dict)) > 0:
+            node_weight_dict[n]['weight'] = np.mean(list(bt_dict.values()))
+
+    ion_weight_dict = {}
+    for k, v in node_weight_dict.items():
+        for ion in v['dataname']:
+            if ion in ion_weight_dict.keys():
+                ion_weight_dict[ion][k] = v['weight']
+            else:
+                ion_weight_dict[ion] = {k: v['weight']}
+
+    #print(ion_weight_dict)
+
+    # Create final simple ion_graph
+    ign = nx.Graph()
     for ind in sum_species.index:
-        ign.add_node(ind)
+        ign.add_node(ind, sum_species=pd.Series(ion_weight_dict[ind]).sort_values(ascending=False))
 
     test_l = []
     for u, v, d in ig.edges(data=True):
