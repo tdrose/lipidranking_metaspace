@@ -7,6 +7,8 @@ import pandas as pd
 import numpy as np
 import linex2 as lx2
 
+from .utils import list_product
+
 
 def parse_annotation_series(x: pd.Series,
                             ref_lips: dict,
@@ -55,10 +57,10 @@ def make_lipid_dict(x: pd.Series) -> Dict:
     out_dict = dict()
     for ll in x:
         for l in ll:
-            if l.get_lipid_class().upper() not in out_dict.keys():
-                out_dict[l.get_lipid_class().upper()] = [l]
+            if l.get_lipid_class() not in out_dict.keys():
+                out_dict[l.get_lipid_class()] = [l]
             else:
-                out_dict[l.get_lipid_class().upper()].append(l)
+                out_dict[l.get_lipid_class()].append(l)
     return out_dict
 
 
@@ -85,6 +87,7 @@ def bootstrap_networks(unique_species: pd.Series,
                                                                   nx.MultiGraph]]]:
     net_list = []
     for i in range(n):
+        print(str(i+1), '/', n)
         samp = sample_sum_species(unique_species)
         bootstrapped_lipids = select_lipids_from_sample(parsed_lipids, samp)
 
@@ -125,7 +128,11 @@ def lipid_ion_graph(g: Union[nx.Graph, nx.MultiGraph],
     return gn
 
 
-def ion_weight_graph(g: nx.MultiGraph, sum_species: pd.Series, bootstraps: int) -> nx.Graph:
+def ion_weight_graph(g: nx.MultiGraph,
+                     sum_species: pd.Series,
+                     bootstraps: int,
+                     parsed_lipids: pd.Series = None,
+                     feature_similarity: pd.DataFrame = None) -> nx.Graph:
     gn = g.copy()
 
     # Add dataname to nodes
@@ -145,15 +152,47 @@ def ion_weight_graph(g: nx.MultiGraph, sum_species: pd.Series, bootstraps: int) 
                 srt = sorted([d1, d2])
                 ig.add_edge(srt[0], srt[1], **d)
 
-    # Weight annotation based on edgecount
-    node_weight_dict = {} # Key is lipid value is dict of weight and dataname
-    ion_weight_dict = {}
-    for n in gn.nodes:
+    # Weight annotation based on edge count
+    node_weight_dict = {}  # Key is lipid, value is dict of weight and dataname
+
+    for n in gn.nodes:  # Loop over all lipids
         node_weight_dict[n] = {'weight': 0, 'dataname': gn.nodes[n]['dataname']}
-        bt_dict = defaultdict(int)
-        for val in gn[n].values():
+        bt_dict = defaultdict(int)  #
+        tmp_bt_dict = defaultdict(int)  # Key: Bootstrap, val: counter
+        # Loop over all neighbors
+        #  for val in gn[n].values():
+        for olip in gn[n].keys():
+            val = gn[n][olip]
             for x in set(val.keys()):
-                bt_dict[x] += 1
+                # Instead:
+                tmp_bt_dict[val[x]['bootstrap']] += 1
+                # if feature_similarity is None:
+                #       # Unweighted: every neighbor is counted equally
+                #       tmp_bt_dict[val[x]['bootstrap']] += 1
+                # else:
+                #     # Weighted: neighbors contribute with their similarity
+                #     weights = [feature_similarity.loc[d1, d2] for d1, d2 in list_product(gn.nodes[n]['dataname'],
+                #                                                                          gn.nodes[olip]['dataname'])]
+                #     print(weights)
+                #     tmp_bt_dict[val[x]['bootstrap']] += np.mean(weights)
+
+                # bt_dict[x] += 1
+            for k1, v1 in tmp_bt_dict.items():
+                # k1 bootstrap
+                # v1 counter
+                if v1 > 0:
+                    # bt_dict[k1] += 1
+                    # Instead:
+                    if feature_similarity is None:
+                        # Unweighted: every neighbor is counted equally
+                        bt_dict[k1] += 1
+                    else:
+                        # Weighted: neighbors contribute with their similarity
+                        weights = [feature_similarity.loc[d1, d2] for d1, d2 in
+                                   list_product(gn.nodes[n]['dataname'],
+                                                gn.nodes[olip]['dataname'])]
+                        #print(weights)
+                        bt_dict[k1] += np.mean(weights)
 
         if(len(bt_dict)) > 0:
             node_weight_dict[n]['weight'] = np.mean(list(bt_dict.values()))
@@ -171,7 +210,15 @@ def ion_weight_graph(g: nx.MultiGraph, sum_species: pd.Series, bootstraps: int) 
     # Create final simple ion_graph
     ign = nx.Graph()
     for ind in sum_species.index:
-        ign.add_node(ind, sum_species=pd.Series(ion_weight_dict[ind]).sort_values(ascending=False))
+        if parsed_lipids is None:
+            ign.add_node(ind,
+                         sum_species=pd.Series(ion_weight_dict[ind]).sort_values(ascending=False)
+                         )
+        else:
+            ign.add_node(ind,
+                         sum_species=pd.Series(ion_weight_dict[ind]).sort_values(ascending=False),
+                         parsed_lipids=parsed_lipids[ind]
+                         )
 
     test_l = []
     for u, v, d in ig.edges(data=True):
@@ -187,6 +234,8 @@ def ion_weight_graph(g: nx.MultiGraph, sum_species: pd.Series, bootstraps: int) 
             ign[srt[0]][srt[1]]['enzyme_uniprot'] = list(set(ign[srt[0]][srt[1]]['enzyme_uniprot']))
         else:
             test_l.append(tuple(sorted((srt[0], srt[1]))))
+
+            # weighting
             ign.add_edge(srt[0], srt[1],
                          weight=len(set([x['bootstrap'] for x in dict(ig[u][v]).values()])) / bootstraps,
                          enzyme_id=d['enzyme_id'].split(';'),
@@ -195,4 +244,5 @@ def ion_weight_graph(g: nx.MultiGraph, sum_species: pd.Series, bootstraps: int) 
                          )
 
     ign.remove_edges_from(nx.selfloop_edges(ign))
+
     return ign
