@@ -8,6 +8,7 @@ import numpy as np
 import linex2 as lx2
 
 from .utils import list_product
+from .linex2_processing import get_lx2_ref_lip_dict, get_lx2_ref_lips
 
 
 def parse_annotation_series(x: pd.Series,
@@ -81,7 +82,8 @@ def bootstrap_networks(unique_species: pd.Series,
                        n: int,
                        lx2_class_reacs: List,
                        lx2_reference_lipids: List,
-                       return_composed=False) -> Union[nx.Graph,
+                       return_composed=False,
+                       verbose=False) -> Union[nx.Graph,
                                                        nx.MultiGraph,
                                                        List[Union[nx.Graph,
                                                                   nx.MultiGraph]]]:
@@ -98,7 +100,7 @@ def bootstrap_networks(unique_species: pd.Series,
             fa_reactions=[],
             ether_conversions=False
         )
-        tmp = gln.native_network(filter_duplicates=False, multi=True)
+        tmp = gln.native_network(filter_duplicates=False, multi=True, verbose=verbose)
         for u, v, t in tmp.edges:
             tmp[u][v][t]['bootstrap'] = i
 
@@ -246,3 +248,30 @@ def ion_weight_graph(g: nx.MultiGraph,
     ign.remove_edges_from(nx.selfloop_edges(ign))
 
     return ign
+
+
+def make_lipid_networks(ann: pd.DataFrame,
+                        class_reacs,
+                        lipid_col: str = 'moleculeNames',
+                        bootstraps=30,
+                        verbose=True):
+
+    parsed_lipids = parse_annotation_series(ann[lipid_col], get_lx2_ref_lip_dict(), verbose=verbose)
+    keep_annotations = annotations_parsed_lipids(parsed_lipids)
+    parsed_annotations = ann.copy()
+    parsed_annotations['parsed_lipids'] = parsed_lipids
+    parsed_annotations = parsed_annotations.loc[keep_annotations, :]
+
+    g = bootstrap_networks(
+        unique_sum_species(parsed_annotations['parsed_lipids']),
+        parsed_annotations['parsed_lipids'],
+        n=bootstraps,
+        lx2_class_reacs=class_reacs,
+        lx2_reference_lipids=get_lx2_ref_lips(),
+        return_composed=True,
+        verbose=verbose
+    )
+
+    ig = ion_weight_graph(g, unique_sum_species(parsed_annotations['parsed_lipids']), bootstraps=bootstraps)
+
+    return parsed_annotations, g, ig

@@ -24,7 +24,8 @@ setup(
     license='AGPLv3',
 
     packages=find_packages(),
-    install_requires=['linex2', 'networkx', "pandas", "matplotlib", "numpy"],
+    install_requires=['linex2>=1.1.11', 'networkx', "pandas", "matplotlib", "numpy",
+                      'tqdm', 'scanpy'],
     python_requires=">=3.8",
 
     zip_safe=False,
