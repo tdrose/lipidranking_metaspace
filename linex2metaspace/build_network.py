@@ -83,13 +83,15 @@ def bootstrap_networks(unique_species: pd.Series,
                        lx2_class_reacs: List,
                        lx2_reference_lipids: List,
                        return_composed=False,
-                       verbose=False) -> Union[nx.Graph,
+                       verbose=False,
+                       print_iterations=True) -> Union[nx.Graph,
                                                        nx.MultiGraph,
                                                        List[Union[nx.Graph,
                                                                   nx.MultiGraph]]]:
     net_list = []
     for i in range(n):
-        print(str(i+1), '/', n)
+        if print_iterations:
+            print(str(i+1), '/', n)
         samp = sample_sum_species(unique_species)
         bootstrapped_lipids = select_lipids_from_sample(parsed_lipids, samp)
 
