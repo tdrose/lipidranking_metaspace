@@ -13,24 +13,47 @@ from .linex2_processing import get_lx2_ref_lip_dict, get_lx2_ref_lips
 
 def parse_annotation_series(x: pd.Series,
                             ref_lips: dict,
-                            verbose=True) -> pd.Series:
+                            verbose=True,
+                            db_ids: pd.Series = None) -> pd.Series:
     parsed_list = []
-    for i, v in x.items():
-        tmp_list = []
-        for lip in v:
-            pl = None
+    if db_ids is None:
+        for i, v in x.items():
+            tmp_list = []
+            for lip in v:
+                pl = None
 
-            try:
-                pl = lx2.lipid_parser(lip, is_ll_compatible=True, reference_lipids=ref_lips,
-                                      org_name=str(i), convert_plasmogen=True,
-                                      force_ether_db_pos=True)  # Assign ion as name
-                pl.set_converted_to_mol_spec(converted=True)
-            except:
-                if verbose:
-                    print(f'Could not parse: \'{lip}\'')
-            if pl is not None:
-                tmp_list.append(pl)
-        parsed_list.append(tmp_list)
+                try:
+                    pl = lx2.lipid_parser(lip, is_ll_compatible=True, reference_lipids=ref_lips,
+                                          org_name=str(i), convert_plasmogen=True,
+                                          force_ether_db_pos=True)  # Assign ion as name
+                    pl.set_converted_to_mol_spec(converted=True)
+                except:
+                    if verbose:
+                        print(f'Could not parse: \'{lip}\'')
+                if pl is not None:
+                    tmp_list.append(pl)
+            parsed_list.append(tmp_list)
+    else:
+        for counter, (i, v) in enumerate(x.items()):
+            tmp_list = []
+            for counter2, lip in enumerate(v):
+                pl = None
+
+                try:
+                    pl = lx2.lipid_parser(lip, is_ll_compatible=True, reference_lipids=ref_lips,
+                                          org_name=str(i), convert_plasmogen=True,
+                                          force_ether_db_pos=True)  # Assign ion as name
+                    pl.set_converted_to_mol_spec(converted=True)
+
+                    # Not the cleanest way, but best option if I don't want to change lx2 package
+                    pl._Lipid__ids = {'db_id': db_ids.values[counter][counter2]}
+                except:
+                    if verbose:
+                        print(f'Could not parse: \'{lip}\'')
+                if pl is not None:
+                    tmp_list.append(pl)
+            parsed_list.append(tmp_list)
+
     return pd.Series(parsed_list, index=x.index)
 
 
