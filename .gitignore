@@ -4,3 +4,5 @@ build/*
 linex2metaspace.egg-info/*
 *.pyc
 .ipynb_checkpoints/*
+
+.vscode/*
