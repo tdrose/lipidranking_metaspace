@@ -229,6 +229,40 @@ ig = lx2m.ion_weight_graph(g,
                           )
 
 
+# %%
+class RunMultipleNetworks:
+    pass
+
+ig_evaluation_dict = {}
+# Evaluate a range of number of bootstraps
+# Start with 10, if the #bootstrap evaluation is required
+for bt in tqdm(range(40, 51, 10)):
+    
+    ig_evaluation_dict[bt] = []
+    # 10 Repetitions per number of bootstraps
+    for i in range(10):
+        tmp_g = lx2m.bootstrap_networks(
+                    lx2m.unique_sum_species(parsed_annotations['parsed_lipids']),
+                    parsed_annotations['parsed_lipids'],
+                    n=bt,
+                    lx2_class_reacs=class_reacs,
+                    lx2_reference_lipids=lx2m.get_lx2_ref_lips(),
+                    return_composed=True,
+                    print_iterations=False
+                )
+
+        tmp_ig = lx2m.ion_weight_graph(
+                    tmp_g, 
+                    lx2m.unique_sum_species(parsed_annotations['parsed_lipids']), 
+                    bootstraps=bt,
+                    parsed_lipids=parsed_annotations['parsed_lipids'],
+                    #feature_similarity=feature_sim
+                 )
+        
+        ig_evaluation_dict[bt].append(tmp_ig)
+
+
+
 
 # %%
 class ComparisonToLCMSdata:
@@ -302,6 +336,144 @@ conf_df = pd.concat([pd.DataFrame({'pos': conf_pos, 'type': 'Confirmed lipids'})
                      pd.DataFrame({'pos': nconf_pos, 'type': 'Not confirmed lipids'})]).reset_index()
 
 
+# %% 
+class HelperFunctions:
+    pass
+
+def calculate_confusion_matrix(ranking_dict, cut_off_function, ground_truth, **kwargs):
+    out = {'tp': 0, 'fp': 0, 'tn': 0, 'fn': 0}
+    
+    for ion, ranking in ranking_dict.items():
+        tmp = cut_off_function(ranking, **kwargs)
+        
+        for ss, indication in tmp.items():
+            if ss in ground_truth and indication==1:
+                out['tp'] +=1
+            elif ss not in ground_truth and indication==1:
+                out['fp'] +=1
+            elif ss not in ground_truth and indication==0:
+                out['tn'] +=1
+            elif ss in ground_truth and indication==0:
+                out['fn'] +=1
+    
+    return out
+
+def first_cutoff(ranking):
+    return {ss: 1 if info['relpos']==0 else 0 for ss, info in ranking.items()}
+
+def abs_cutoff(ranking, position=1):
+    return {ss: 1 if info['abspos']<=position else 0 for ss, info in ranking.items()}
+
+def scoring_cutoff(ranking, fraction=0.3):
+    total_score = sum([info['score'] for info in ranking.values()])
+    
+    return {ss: 1 if info['score']/total_score>=fraction else 0 for ss, info in ranking.items()}
+
+def randomly_picking(ranking, num=1):
+    tmp = list(ranking.keys())
+    if (len(tmp)>0):
+        if len(tmp)>=num:
+            choice = random.sample(tmp, k=num)
+        else:
+            choice = random.sample(tmp, k=len(tmp))
+    else:
+        choice = ''
+    return {ss: 1 if ss in choice else 0 for ss, info in ranking.items()}
+        
+def sensitivity(x):
+    return x['tp'] / (x['tp'] + x['fn'])
+
+def specificity(x):
+    return x['tn'] / (x['tn'] + x['fp'])
+
+def accuracy(x):
+    return (x['tp'] + x['tn'])/(x['fn']+x['tn']+x['fp']+x['tp'])
+
+def f1score(x):
+    return (x['tp']*2)/(x['tp']*2 + x['fp'] + x['fn'])
+
+def all_scores(x, metric, verbose = True):
+    return_dict = {
+        'sensitivity': sensitivity(x),
+        'specificity': specificity(x),
+        'accuracy': accuracy(x),
+        'f1score': f1score(x)
+                  }
+    if verbose:
+        print(f'{metric}:')
+        print(f'- sensitivity: {round(return_dict["sensitivity"], 3)}')
+        print(f'- specificity: {round(return_dict["specificity"], 3)}')
+        print(f'- accuracy: {round(return_dict["accuracy"], 3)}')
+        print(f'- F1-score: {round(return_dict["f1score"], 3)}')
+        
+    return return_dict
+
+def eval_scores(ig_evaluation_dict, absolute_position=1, scoring_fraction=0.7, random_num=1):
+    eval_dict = {'bootstraps': [], 'sensitivity': [], 'specificity': [], 
+                 'accuracy': [], 'f1score': [], 'cut-off metric': []}
+
+    # Loop over bootstraps
+    for bt, nets in ig_evaluation_dict.items():
+        # Loop over repetitions
+        for net in nets:
+            ranking_dict = get_ranking_dict(net)
+
+            # First cut-off
+            confmat = calculate_confusion_matrix(ranking_dict, first_cutoff, identified_sum_species)
+            scores = all_scores(confmat, '', verbose=False)
+            eval_dict['bootstraps'].append(bt)
+            eval_dict['sensitivity'].append(scores['sensitivity'])
+            eval_dict['specificity'].append(scores['specificity'])
+            eval_dict['accuracy'].append(scores['accuracy'])
+            eval_dict['f1score'].append(scores['f1score'])
+            eval_dict['cut-off metric'].append('First cut-off')
+
+            # Absolute cut-off
+            confmat = calculate_confusion_matrix(ranking_dict, abs_cutoff, identified_sum_species, 
+                                                 position=absolute_position)
+            scores = all_scores(confmat, '', verbose=False)
+            eval_dict['bootstraps'].append(bt)
+            eval_dict['sensitivity'].append(scores['sensitivity'])
+            eval_dict['specificity'].append(scores['specificity'])
+            eval_dict['accuracy'].append(scores['accuracy'])
+            eval_dict['f1score'].append(scores['f1score'])
+            eval_dict['cut-off metric'].append('Absolute cut-off')
+
+            # Scoring cut-off
+            confmat = calculate_confusion_matrix(ranking_dict, scoring_cutoff, identified_sum_species, 
+                                                 fraction=scoring_fraction)
+            scores = all_scores(confmat, '', verbose=False)
+            eval_dict['bootstraps'].append(bt)
+            eval_dict['sensitivity'].append(scores['sensitivity'])
+            eval_dict['specificity'].append(scores['specificity'])
+            eval_dict['accuracy'].append(scores['accuracy'])
+            eval_dict['f1score'].append(scores['f1score'])
+            eval_dict['cut-off metric'].append('Scoring cut-off')
+
+            # Random cut-off
+            random_dict = {'sensitivity': [], 'specificity': [], 'accuracy': [],'f1score': []}
+            for i in range(20):
+                confmat = calculate_confusion_matrix(ranking_dict, randomly_picking, identified_sum_species, 
+                                                     num=random_num)
+                tmp = all_scores(confmat, 'Random', verbose=False)
+                random_dict['sensitivity'].append(tmp['sensitivity'])
+                random_dict['specificity'].append(tmp['specificity'])
+                random_dict['accuracy'].append(tmp['accuracy'])
+                random_dict['f1score'].append(tmp['f1score'])
+
+            final_dict = {k: np.mean(v) for k, v in random_dict.items()}
+            eval_dict['bootstraps'].append(bt)
+            eval_dict['sensitivity'].append(final_dict['sensitivity'])
+            eval_dict['specificity'].append(final_dict['specificity'])
+            eval_dict['accuracy'].append(final_dict['accuracy'])
+            eval_dict['f1score'].append(final_dict['f1score'])
+            eval_dict['cut-off metric'].append('Random cut-off')
+
+    eval_df = pd.melt(pd.DataFrame(eval_dict), 
+                      id_vars=['bootstraps', 'cut-off metric'], 
+                      value_vars=['sensitivity', 'specificity', 'accuracy', 'f1score'],
+                      var_name='score')
+    return eval_df
 
 
 
