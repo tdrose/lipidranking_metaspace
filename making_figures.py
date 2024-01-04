@@ -8,6 +8,7 @@ import random
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
+from matplotlib import image
 import seaborn as sns
 import numpy as np
 from tqdm import tqdm
@@ -18,9 +19,6 @@ import scanpy as sc
 import linex2 as lx2
 import linex2metaspace as lx2m
 import os
-
-# %%
-os.chdir('/home/trose/projects/linex2_for_maldi')
 
 
 # %% Helper functions
@@ -43,7 +41,8 @@ def logfc_condition_matrices(cond_dict, c1, c2):
     return cond_dict[c1] - cond_dict[c2]
 
 def nudge(pos, x_shift, y_shift):
-    return {n:(x + x_shift, y + (y_shift * np.random.choice([-1,1]))) for n,(x,y) in pos.items()}
+    return {n:(x + x_shift, 
+               y + (y_shift * np.random.choice(np.array([-1,1])))) for n, (x,y) in pos.items()}
 
 def match_lipid(x, pattern=r'^PC'):
     try:
@@ -67,7 +66,7 @@ def lipid_bubble_plot(likelilipids: pd.Series,
                       condition1: str,
                       condition2: str,
                       reference_lipids,
-                      condition_data_dict: Dict[str, np.array],
+                      condition_data_dict: Dict[str, np.ndarray],
                       regex_pattern: str = r'\([0-9]+'
                      ):
     position_dict = {}
@@ -135,7 +134,7 @@ def get_ranking_dict(net):
                     # Include only actually ranked lipids
                     if not (sum_species==0).all():
                         tmp_dict[ss] = {
-                            'relpos': scaling_position(pos, len(sum_species)), # FIX SCALING OF POSITIONS
+                            'relpos': scaling_position(pos, len(sum_species)), # FIX SCALING 
                             'abspos': pos,
                             'score': score,
                             'lipid': ll,
@@ -186,7 +185,7 @@ adata.var = adata.var.set_index(['formula', 'adduct'])
 
 
 # %%
-feature_sim = pd.DataFrame(pairwise_kernels(adata.X.transpose(), metric='cosine'))
+feature_sim = pd.DataFrame(pairwise_kernels(np.array(adata.X).transpose(), metric='cosine'))
 feature_sim.columns = adata.var.index
 feature_sim.index = adata.var.index
 # %%
@@ -221,7 +220,7 @@ g = lx2m.bootstrap_networks(
     )
 
 # %%
-ig = lx2m.ion_weight_graph(g, 
+ig = lx2m.ion_weight_graph(g,  # type: ignore
                            lx2m.unique_sum_species(parsed_annotations['parsed_lipids']), 
                            bootstraps=bootstraps,
                            parsed_lipids=parsed_annotations['parsed_lipids'],
@@ -252,7 +251,7 @@ for bt in tqdm(range(40, 51, 10)):
                 )
 
         tmp_ig = lx2m.ion_weight_graph(
-                    tmp_g, 
+                    tmp_g,  # type: ignore
                     lx2m.unique_sum_species(parsed_annotations['parsed_lipids']), 
                     bootstraps=bt,
                     parsed_lipids=parsed_annotations['parsed_lipids'],
@@ -310,9 +309,9 @@ for k, v in dict(ig.nodes(data=True)).items():
                 'relpos': scaling_position(pos, len(sum_species)), # FIX SCALING OF POSITIONS
                 'abspos': pos,
                 'score': score,
-                'lipid': ll,
-                'iseven': iseven(ll.sum_length()),
-                'hasether': ll.get_ether()
+                'lipid': ll, # type: ignore
+                'iseven': iseven(ll.sum_length()), # type: ignore
+                'hasether': ll.get_ether() # type: ignore
                            }
     out_dict[k] = tmp_dict
 
@@ -487,8 +486,10 @@ def ax_ann(fig, ax, letter='A', xoffset=0., yoffset=0., **kwargs):
     fig.text(left+xoffset, bottom+height+yoffset, letter, **kwargs)
 
 # %%
-class FigureAssembly:
-    pass
+# ##################
+# MAIN FIGURE
+# ##################
+
 XXSMALL_SIZE = 5
 XSMALL_SIZE = 6
 SMALLSMALL_SIZE = 8
@@ -499,28 +500,39 @@ cm = 1/2.54
 
 
 fig = plt.figure(figsize=(30*cm, 30*cm))
-(sketchfig, resultfig) = fig.subfigures(2, 1, height_ratios=[1, 1])
 
-resultfig.subplots_adjust(left=0, right=1.1, hspace=.3, wspace=.6)
-gs = plt.GridSpec(nrows=2, ncols=8)
-netax = resultfig.add_subplot(gs[0:2, 0:3])
-posax = resultfig.add_subplot(gs[0, 3:5])
-confax = resultfig.add_subplot(gs[0, 5:7])
-eval1ax = resultfig.add_subplot(gs[1, 3])
-eval2ax = resultfig.add_subplot(gs[1, 4])
-eval3ax = resultfig.add_subplot(gs[1, 5])
-eval4ax = resultfig.add_subplot(gs[1, 6])
+gs = plt.GridSpec(nrows=5, ncols=6) # type: ignore
+
+sketchax = fig.add_subplot(gs[0:3, 0:3])
+netax = fig.add_subplot(gs[0:3, 3:6])
+
+posax = fig.add_subplot(gs[3:5, 0:2])
+confax = fig.add_subplot(gs[3:5, 2:4])
+eval1ax = fig.add_subplot(gs[3, 4])
+eval2ax = fig.add_subplot(gs[3, 5])
+eval3ax = fig.add_subplot(gs[4, 4])
+eval4ax = fig.add_subplot(gs[4, 5])
+
+fig.subplots_adjust(left=0, right=1.1, hspace=.3, wspace=.6)
+
+ax = sketchax
+img = image.imread('figures/schematic.png')
+ax.imshow(img)
+ax.axis('off')
+ax_ann(fig, ax, letter='A', size=BIGGER_SIZE, weight='bold', xoffset=-.02)
 
 
 ax = netax
 pos = nx.spring_layout(ig, k=.35)
 nx.draw_networkx_nodes(ig, pos=pos, node_size=10, ax=ax)
-nx.draw_networkx_edges(ig, pos=pos, width=[d['weight']/2 for u, v, d in ig.edges(data=True)], ax=ax)
+nx.draw_networkx_edges(ig, pos=pos, 
+                       width=[d['weight']/2 for u, v, d in ig.edges(data=True)], # type: ignore
+                       ax=ax)
 nx.draw_networkx_labels(ig, pos=pos,
                         labels={k: ", ".join(v['sum_species'].index) for k, v in dict(ig.nodes(data=True)).items()},
                         font_size=6, ax=ax)
 ax.axis('off')
-ax_ann(resultfig, ax, letter='A', size=BIGGER_SIZE, weight='bold')
+ax_ann(fig, ax, letter='B', size=BIGGER_SIZE, weight='bold')
 
 
 ax = posax
@@ -539,7 +551,7 @@ sns.violinplot(pd.concat(df_l).reset_index(), x='position', y='proportion', ax=a
 ax.set_xlabel('Ranking position')
 ax.set_ylabel('Proportion of edges per annotation')
 sns.despine(offset=5, trim=False, ax=ax)
-ax_ann(resultfig, ax, letter='B', size=BIGGER_SIZE, weight='bold', xoffset=-.08)
+ax_ann(fig, ax, letter='C', size=BIGGER_SIZE, weight='bold', xoffset=-.08)
 
 
 ax = confax
@@ -558,14 +570,73 @@ ax.set_ylabel('Relative lipid ranking')
 ax.set_xlabel('')
 ax.set_ylim((-.5, 1.6))
 sns.despine(offset=5, trim=False, ax=ax)
-ax_ann(resultfig, ax, letter='C', size=BIGGER_SIZE, weight='bold', xoffset=-.08)
+ax_ann(fig, ax, letter='D', size=BIGGER_SIZE, weight='bold', xoffset=-.08)
 
 
+eval_df = eval_scores(ig_evaluation_dict, random_num=1, scoring_fraction=0.5, absolute_position=0)
 
+eval_df['cut-off metric'] = eval_df['cut-off metric'].replace(
+    ['First cut-off', 'Absolute cut-off', 'Scoring cut-off', 'Random cut-off'], 
+    ['Most likely', 'Most likely', '50% of neighbors', 'Random 2 molecules'])
+eval_50 = eval_df[eval_df['bootstraps']==50]
 
+# Sensitivity
+ax = eval1ax
+tmp = eval_50[eval_50['score']=='sensitivity']
+sns.boxplot(data=tmp, x='cut-off metric', y='value', color='grey', ax=ax)
+xtl = ax.get_xticklabels()
+ax.set_xticklabels([], rotation=30, ha='right')
+ax.set_title('Sensitivity')
+ax.set_xlabel('')
+ax_ann(fig, ax, letter='E', size=BIGGER_SIZE, weight='bold', xoffset=-.08)
 
+# Specificity
+ax = eval2ax
+tmp = eval_50[eval_50['score']=='specificity']
+sns.boxplot(data=tmp, x='cut-off metric', y='value', color='grey', ax=ax)
+xtl = ax.get_xticklabels()
+ax.set_xticklabels([], rotation=30, ha='right')
+ax.set_xlabel('')
+ax.set_title('Specificity')
+
+# Accuracy
+ax = eval3ax
+tmp = eval_50[eval_50['score']=='accuracy']
+sns.boxplot(data=tmp, x='cut-off metric', y='value', color='grey', ax=ax)
+xtl = ax.get_xticklabels()
+ax.set_xticklabels(xtl, rotation=30, ha='right')
+ax.set_title('Accuracy')
+ax.set_xlabel('Cut-off metric')
+
+# F1-score
+ax = eval4ax
+tmp = eval_50[eval_50['score']=='f1score']
+sns.boxplot(data=tmp, x='cut-off metric', y='value', color='grey', ax=ax)
+xtl = ax.get_xticklabels()
+ax.set_xticklabels(xtl, rotation=30, ha='right')
+ax.set_title('F1-score')
+ax.set_xlabel('Cut-off metric')
 
 plt.show()
 
 
+
 # %%
+# ##################
+# Supplementary Figure 1
+# * Self evaluation
+# ##################
+
+
+# %%
+# ##################
+# Supplementary Figure 2
+# * More detailed LC-MS evaluation
+# ##################
+
+
+# %%
+# ##################
+# Supplementary Figure 3
+# * Application on spatial Data from METASPACE
+# ##################
