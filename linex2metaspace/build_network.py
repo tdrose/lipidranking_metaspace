@@ -13,8 +13,21 @@ from .linex2_processing import get_lx2_ref_lip_dict, get_lx2_ref_lips
 
 def parse_annotation_series(x: pd.Series,
                             ref_lips: dict,
-                            verbose=True,
+                            verbose: bool=True,
                             db_ids: Optional[pd.Series] = None) -> pd.Series:
+    """
+    Parse lipid names using the ``linex2`` package
+
+    Args:
+        x: A Series containing a list of lipid names for each element
+        ref_lips: A dict of reference lipids (e.g. as returned by ``get_lx2_ref_lip_dict``)
+        verbose: Print more information about parsed lipids
+        db_ids: Another seried object providing a 1 to 1 mapping of lipid names to database ID.
+
+    Returns:
+        Series containing lists of ``linex2.Lipid`` objects
+
+    """
     parsed_list = []
     if db_ids is None:
         for i, v in x.items():
@@ -57,11 +70,30 @@ def parse_annotation_series(x: pd.Series,
     return pd.Series(parsed_list, index=x.index)
 
 
-def annotations_parsed_lipids(x: pd.Series) -> List:
+def annotations_parsed_lipids(x: pd.Series) -> List[lx2.Lipid]:
+    """
+    Extract all parsed lipids from a Series as a list
+
+    Args:
+    x: Series of parsed lipids as returned by ``parse_annotation_series``
+    
+    Returns:
+        A list of all parsed lipid objects
+    
+    """
     return list(x[x.apply(lambda y: len(y)) > 0].index)
 
 
 def unique_sum_species(x: pd.Series) -> pd.Series:
+    """
+        Reduce a Series of parsed lipids to unique sum species
+
+    Args:
+        x: Series of parsed lipids as returned by ``parse_annotation_series``
+    
+    Returns:
+        Series of same size, but with only unique strign representations for lipid sum species
+    """
     return x.apply(lambda z: list(set([y.sum_species_str() for y in z])))
 
 
@@ -71,6 +103,19 @@ def sample_sum_species(x: pd.Series):
 
 def select_lipids_from_sample(all_lipids: pd.Series,
                               sum_sample: pd.Series) -> pd.Series:
+    """
+    Given a series of Lipid sum species, 
+    return a list of all fitting molecules species per annotation.
+
+    Args:
+        all_lipids: A series of moleculear species candidates per annotation
+        sum_sample: A series with one selected sum species strings per annotation
+    
+    Returns:
+        A Series containing a list of molecular species candidates (of the same sum formula) per annotation
+
+    
+    """
     out_l = []
     for i in all_lipids.index:
         out_l.append([lip for lip in all_lipids[i] if lip.sum_species_str() == sum_sample[i]])
@@ -78,6 +123,16 @@ def select_lipids_from_sample(all_lipids: pd.Series,
 
 
 def make_lipid_dict(x: pd.Series) -> Dict:
+    """
+    Create a lipis class dict to generate lipid networks
+    
+    Args:
+        x: A series containing a list of lipids for each annotation
+
+    Returns:
+        A dictionaty with the lipid class as key and a list of ``linex2.Lipid`` objects as values.
+    
+    """
     out_dict = dict()
     for ll in x:
         for l in ll:
@@ -109,6 +164,24 @@ def bootstrap_networks(unique_species: pd.Series,
                        verbose=False,
                        print_iterations=True) -> Union[nx.MultiGraph,
                                                        List[nx.MultiGraph]]:
+    """
+    Create bootstrapped lipid networks from parsed lipid annotations.
+
+    Args:
+        unique_species: A series with a list of unique sum species for each annotation
+        parsed_lipids: A series with all parsed lipid species per annotation
+        n: The number of bootstraps
+        lx2_class_reacs: List of linex class reactions as 
+            returned by ``get_organism_combined_class_reactions``
+        lx2_reference_lipids: List of reference lipids are returned by ``get_lx2_ref_lips``
+        return_composed: Return either one combined graph or a list of each bootstrapped graph
+        verbose: print more detailed information about the network generation
+        print_iterations: Print the progress of bootstraps
+
+    Returns:
+        Either one combined graph or a list os graphs for each bootstrap with lipid species as nodes
+    
+    """
     net_list = []
     for i in range(n):
         if print_iterations:
@@ -137,6 +210,18 @@ def bootstrap_networks(unique_species: pd.Series,
 
 def lipid_ion_graph(g: Union[nx.Graph, nx.MultiGraph],
                     sum_species: pd.Series) -> Union[nx.Graph, nx.MultiGraph]:
+    """
+    Convert a graph with lipids as nodes to a graph added nodes/edges 
+    connecting ions to each lipid node.
+
+    Args:
+        g: A lipid graph
+        sum_species: A series with unique sum species for each annotation
+
+    Returns:
+        An extended graph with added nodes/edges 
+        connecting ions to each lipid node in addition to Lipid-Lipid edges.
+    """
     gn = g.copy()
 
     for ion, ll in sum_species.items():
@@ -158,6 +243,13 @@ def ion_weight_graph(g: nx.MultiGraph,
                      bootstraps: int,
                      parsed_lipids: Optional[pd.Series] = None,
                      feature_similarity: Optional[pd.DataFrame] = None) -> nx.Graph:
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     gn = g.copy()
 
     # Add dataname to nodes
@@ -276,8 +368,8 @@ def ion_weight_graph(g: nx.MultiGraph,
 def make_lipid_networks(ann: pd.DataFrame,
                         class_reacs,
                         lipid_col: str = 'moleculeNames',
-                        bootstraps=30,
-                        verbose=True) -> Tuple[pd.DataFrame, nx.MultiGraph, nx.Graph]:
+                        bootstraps: int = 30,
+                        verbose: bool = True) -> Tuple[pd.DataFrame, nx.MultiGraph, nx.Graph]:
     """
     Create a lipid network based a annotations from METASPACE.
 

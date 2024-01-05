@@ -24,6 +24,13 @@ def match_lipid(x, pattern=r'^PC') -> bool:
 
 
 def match_lipids(x, pattern=r'^PC'):
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     if x is not np.nan:
         if len(x) > 1:
             try:
@@ -37,10 +44,24 @@ def match_lipids(x, pattern=r'^PC'):
 
 
 def get_all_conditions(adata, col):
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     return list(set(adata.obs[col]))
 
 
 def get_condition_matrices(adata, col, conditions):
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     out_dict = {}
     for cond in conditions:
         out_dict[cond] = adata.X[adata.obs[col] == cond, :]
@@ -48,31 +69,74 @@ def get_condition_matrices(adata, col, conditions):
 
 
 def log10_condition_matrices(cond_dict, offset=0):
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     return {k: np.log10(v+offset) for k, v in cond_dict.items()}
 
 
 def mean_condition_matrices(cond_dict):
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     return {k: np.nanmean(v, axis=0) for k, v in cond_dict.items()}
 
 
 def logfc_condition_matrices(cond_dict, c1, c2):
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     return cond_dict[c1] - cond_dict[c2]
 
 
 def nudge(pos, x_shift, y_shift):
-    return {n: (x + x_shift, y + (y_shift * np.random.choice([-1, 1]))) for n, (x, y) in pos.items()}
+    """
+
+    Args:
+
+    Returns:
+    
+    """
+    return {n: (x + x_shift, y + (y_shift * np.random.choice([-1, 1]))) for n, 
+            (x, y) in pos.items()}
 
 
 def transform_annotations_to_list(adata: sc.AnnData, col: str = 'moleculeNames'):
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     app_list = []
     for i in adata.var.index:
-        app_list.append(ast.literal_eval(adata.var.loc[i, col]))
+        app_list.append(ast.literal_eval(adata.var.loc[i, col])) # type: ignore
 
     adata.var[col] = pd.Series(app_list, index=adata.var.index)
 
 
 def get_component(net, position=-1):
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     cc = list(nx.connected_components(net))
-    order = np.argsort([len(x) for x in cc])
+    order = np.argsort(np.array([len(x) for x in cc]))
 
     return nx.induced_subgraph(net, cc[order[position]])

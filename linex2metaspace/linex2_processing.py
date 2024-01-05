@@ -2,14 +2,35 @@ import linex2 as lx2
 
 
 def get_lx2_ref_lip_dict():
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     return lx2.parse_lipid_reference_table_dict(lx2.load_data.STANDARD_LIPID_CLASSES)
 
 
 def get_lx2_ref_lips():
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     return lx2.parse_lipid_reference_table(lx2.load_data.STANDARD_LIPID_CLASSES)
 
 
 def get_organism_combined_class_reactions(ref_lip_dict, organism='HSA'):
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     class_reaction_list = [
         lx2.tmp_dirty_functions.make_organism_reaction_list_from_reactome(
             lx2.load_data.REACTOME_OTHERS_UNIQUE,

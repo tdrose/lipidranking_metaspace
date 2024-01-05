@@ -17,6 +17,13 @@ def lipid_bubble_plot(likelilipids: pd.Series,
                       parsed_lipids: pd.Series,
                       regex_pattern: str = r'\([0-9]+',
                       ):
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     position_dict = {}
 
     for i in tqdm(range(len(likelilipids))):
@@ -72,6 +79,13 @@ def lipid_bubble_plot(likelilipids: pd.Series,
 
 
 def plot_ion_network(net, plot_edge_labels=False, pos=None, k=.15, return_pos=False):
+    """
+
+    Args:
+
+    Returns:
+    
+    """
     if pos is None:
         pos = nx.spring_layout(net, k=k)
     nx.draw_networkx_nodes(net, pos=pos, node_size=12, )
