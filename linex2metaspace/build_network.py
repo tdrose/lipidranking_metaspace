@@ -1,4 +1,4 @@
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Tuple, Optional
 import random
 from collections import defaultdict
 
@@ -14,7 +14,7 @@ from .linex2_processing import get_lx2_ref_lip_dict, get_lx2_ref_lips
 def parse_annotation_series(x: pd.Series,
                             ref_lips: dict,
                             verbose=True,
-                            db_ids: pd.Series = None) -> pd.Series:
+                            db_ids: Optional[pd.Series] = None) -> pd.Series:
     parsed_list = []
     if db_ids is None:
         for i, v in x.items():
@@ -46,7 +46,7 @@ def parse_annotation_series(x: pd.Series,
                     pl.set_converted_to_mol_spec(converted=True)
 
                     # Not the cleanest way, but best option if I don't want to change lx2 package
-                    pl._Lipid__ids = {'db_id': db_ids.values[counter][counter2]}
+                    pl._Lipid__ids = {'db_id': db_ids.values[counter][counter2]} # type: ignore
                 except:
                     if verbose:
                         print(f'Could not parse: \'{lip}\'')
@@ -107,10 +107,8 @@ def bootstrap_networks(unique_species: pd.Series,
                        lx2_reference_lipids: List,
                        return_composed=False,
                        verbose=False,
-                       print_iterations=True) -> Union[nx.Graph,
-                                                       nx.MultiGraph,
-                                                       List[Union[nx.Graph,
-                                                                  nx.MultiGraph]]]:
+                       print_iterations=True) -> Union[nx.MultiGraph,
+                                                       List[nx.MultiGraph]]:
     net_list = []
     for i in range(n):
         if print_iterations:
@@ -125,7 +123,7 @@ def bootstrap_networks(unique_species: pd.Series,
             fa_reactions=[],
             ether_conversions=False
         )
-        tmp = gln.native_network(filter_duplicates=False, multi=True, verbose=verbose)
+        tmp: nx.Graph = gln.native_network(filter_duplicates=False, multi=True, verbose=verbose) # type: ignore
         for u, v, t in tmp.edges:
             tmp[u][v][t]['bootstrap'] = i
 
@@ -158,8 +156,8 @@ def lipid_ion_graph(g: Union[nx.Graph, nx.MultiGraph],
 def ion_weight_graph(g: nx.MultiGraph,
                      sum_species: pd.Series,
                      bootstraps: int,
-                     parsed_lipids: pd.Series = None,
-                     feature_similarity: pd.DataFrame = None) -> nx.Graph:
+                     parsed_lipids: Optional[pd.Series] = None,
+                     feature_similarity: Optional[pd.DataFrame] = None) -> nx.Graph:
     gn = g.copy()
 
     # Add dataname to nodes
@@ -219,7 +217,7 @@ def ion_weight_graph(g: nx.MultiGraph,
                                    list_product(gn.nodes[n]['dataname'],
                                                 gn.nodes[olip]['dataname'])]
                         #print(weights)
-                        bt_dict[k1] += np.mean(weights)
+                        bt_dict[k1] += np.mean(weights) # type: ignore
 
         if(len(bt_dict)) > 0:
             node_weight_dict[n]['weight'] = np.mean(list(bt_dict.values()))
@@ -279,7 +277,7 @@ def make_lipid_networks(ann: pd.DataFrame,
                         class_reacs,
                         lipid_col: str = 'moleculeNames',
                         bootstraps=30,
-                        verbose=True):
+                        verbose=True) -> Tuple[pd.DataFrame, nx.MultiGraph, nx.Graph]:
     """
     Create a lipid network based a annotations from METASPACE.
 
@@ -310,7 +308,7 @@ def make_lipid_networks(ann: pd.DataFrame,
     parsed_annotations['parsed_lipids'] = parsed_lipids
     parsed_annotations = parsed_annotations.loc[keep_annotations, :]
 
-    g = bootstrap_networks(
+    g: nx.MultiGraph = bootstrap_networks( # type: ignore
         unique_sum_species(parsed_annotations['parsed_lipids']),
         parsed_annotations['parsed_lipids'],
         n=bootstraps,

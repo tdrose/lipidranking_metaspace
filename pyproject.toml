@@ -44,3 +44,13 @@ where = ["."]
 
 [tool.setuptools.dynamic]
 readme = {file = "README.md", content-type = "text/markdown"}
+
+
+[project.optional-dependencies]
+docs = [
+    "sphinx~=7.2",
+    "sphinx-autodoc-typehints",
+    "sphinx-rtd-theme",
+    "metaspace2020",
+    "metaspace-converter"
+]
