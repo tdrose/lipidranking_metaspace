@@ -280,6 +280,29 @@ def make_lipid_networks(ann: pd.DataFrame,
                         lipid_col: str = 'moleculeNames',
                         bootstraps=30,
                         verbose=True):
+    """
+    Create a lipid network based a annotations from METASPACE.
+
+    The function uses an annotation table as returned by the ``metaspace2020`` package trough the
+    ``SMDataset.results`` function or ``metaspace-converter`` package 
+    function ``metaspace_to_anndata`` (stored in ``AnnData.var``).
+
+    Args:
+        ann: A annotation DataFrame as described above
+        class_reacs: Lipid class reactions 
+            (returned by the function ``linex2metaspace.get_organism_combined_class_reactions``)
+        lipid_col: Column name of the ``ann`` table that contains the lipid names 
+            (default: ``moleculeNames``)
+        bootstraps: Number of bootstraps for network generation (default: 30)
+        verbose: Print more detailed information about lipid name parsing results (default=True) 
+    
+    Returns:
+        A tuple with 3 objects:
+        * The updated annotation table with parsed lipids
+        * List of bootstraped lipid networks
+        * Merged annotation (ion) network (with each node representing one annotation and attributes 
+          for ranked lipids for each annotation)
+    """
 
     parsed_lipids = parse_annotation_series(ann[lipid_col], get_lx2_ref_lip_dict(), verbose=verbose)
     keep_annotations = annotations_parsed_lipids(parsed_lipids)
@@ -297,6 +320,7 @@ def make_lipid_networks(ann: pd.DataFrame,
         verbose=verbose
     )
 
-    ig = ion_weight_graph(g, unique_sum_species(parsed_annotations['parsed_lipids']), bootstraps=bootstraps)
+    ig = ion_weight_graph(g, unique_sum_species(parsed_annotations['parsed_lipids']), 
+                          bootstraps=bootstraps)
 
     return parsed_annotations, g, ig
