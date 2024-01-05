@@ -3,10 +3,11 @@ import linex2 as lx2
 
 def get_lx2_ref_lip_dict():
     """
-
-    Args:
+    Wrapper to get reference lipids from ``linex2`` package.
+    Required as input for some functions that parse lipids/create networks.
 
     Returns:
+        Dictionary of Reference lipids.
     
     """
     return lx2.parse_lipid_reference_table_dict(lx2.load_data.STANDARD_LIPID_CLASSES)
@@ -14,10 +15,11 @@ def get_lx2_ref_lip_dict():
 
 def get_lx2_ref_lips():
     """
-
-    Args:
+    Wrapper to get reference lipids from ``linex2`` package.
+    Required as input for some functions that parse lipids/create networks.
 
     Returns:
+        List of Reference lipids.
     
     """
     return lx2.parse_lipid_reference_table(lx2.load_data.STANDARD_LIPID_CLASSES)
@@ -25,10 +27,18 @@ def get_lx2_ref_lips():
 
 def get_organism_combined_class_reactions(ref_lip_dict, organism='HSA'):
     """
+    Wrapper to get lipid class reactions from ``linex2`` package.
+    Required as input for some functions that create networks.
 
     Args:
-
+        ref_lip_dict: Dictionary of reference lipids as returned by 
+            ``get_lx2_ref_lip_dict`` function.
+        organism: Three letter organism code for which class reactions are generated 
+            (default ``HSA``). List of possible organisms can be found here: 
+            https://reactome.org/content/schema/objects/Species 
+    
     Returns:
+        List of ``linex2`` class reactions.
     
     """
     class_reaction_list = [

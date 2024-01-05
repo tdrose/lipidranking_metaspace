@@ -13,15 +13,27 @@ def lipid_bubble_plot(likelilipids: pd.Series,
                       condition1: str,
                       condition2: str,
                       reference_lipids,
-                      condition_data_dict: Dict[str, np.array],
+                      condition_data_dict: Dict[str, np.ndarray],
                       parsed_lipids: pd.Series,
                       regex_pattern: str = r'\([0-9]+',
-                      ):
+                      ) -> pd.DataFrame:
     """
+    Calculate the underlying data to compute a lipid bubble plot that shows on the x/y axis the 
+    number of double bonds/chain length of a lipid class and as node color the fold change between
+    two conditions.
 
     Args:
+        likelilipids: Series of selected lipids per annotation 
+            (e.g. after a cut-off was applied after ranking)
+        condition1: Name of a condition for comparison
+        condition2: Name of another condition for comparison
+        reference_lipids: Dict of reference lipids (as returned by ``get_lx2_ref_lip_dict``)
+        condition_data_dict: Dictionary of data matrices per condition (log transformed)
+        parsed_lipids: A series with all parsed lipid species per annotation
+        reged_pattern: Regex pattern to match a lipid class from a lipid name
 
     Returns:
+        Dataframe with the columns 'C', 'DB', 'LogFC', and '\\|logFC\\|'
     
     """
     position_dict = {}
@@ -78,12 +90,19 @@ def lipid_bubble_plot(likelilipids: pd.Series,
     return final_df
 
 
-def plot_ion_network(net, plot_edge_labels=False, pos=None, k=.15, return_pos=False):
+def plot_ion_network(net: nx.Graph, plot_edge_labels=False, pos=None, k=.15, return_pos=False):
     """
+    Plot a ion (annotation) network. E.g. as returned by ``ion_weight_graph``.
 
     Args:
+        net: A ion (annotation) network as returned by ``ion_weight_graph``
+        plot_edge_labels: If edge labels should be plotted (edge weights from bootstrapping)
+        pos: Optional pre-computed position of network nodes. If None, a new layout will be computed
+        k: k parameter forwarded to ``networkx.spring_layout`` function
+        return_pos: Whether (newly) computed positions should be returned.
 
     Returns:
+        Network layout if return_pos=True
     
     """
     if pos is None:

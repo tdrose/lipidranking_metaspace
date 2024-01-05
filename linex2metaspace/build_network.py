@@ -244,10 +244,22 @@ def ion_weight_graph(g: nx.MultiGraph,
                      parsed_lipids: Optional[pd.Series] = None,
                      feature_similarity: Optional[pd.DataFrame] = None) -> nx.Graph:
     """
+    Create a ion (annotation) network with connections between ions if they are connected through 
+    reactions in at least one bootstrap.
+
+    Each node has a ``sum_species`` attribute which holds the ranked annotation candidates.
 
     Args:
+        g: Combined lipid graph from bootstrapping as returned by ``bootstrap_networks``
+        sum_species: A series with unique sum species for each annotation
+        bootstraps: Number of bootstraps used to generate ``g``.
+        parsed_lipids: A series with all parsed lipid species per annotation
+        feature_similarity: A #annotations x #annotations dataframe with annotation names 
+            as colnames and index. E.g. correlations between features. 
+            Can be used to weight edges in the lipid ranking.
 
     Returns:
+        A graph with ions (annotations) as nodes.
     
     """
     gn = g.copy()
@@ -391,7 +403,7 @@ def make_lipid_networks(ann: pd.DataFrame,
         * The updated annotation table with parsed lipids
         * List of bootstraped lipid networks
         * Merged annotation (ion) network (with each node representing one annotation and attributes 
-          for ranked lipids for each annotation)
+          for ranked lipids for each annotation). For more details check ``ion_weight_graph``.
     """
 
     parsed_lipids = parse_annotation_series(ann[lipid_col], get_lx2_ref_lip_dict(), verbose=verbose)
