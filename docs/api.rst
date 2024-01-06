@@ -1,8 +1,5 @@
-API
-===
-
-linex2metaspace
--------------------
+linex2metaspace Functions
+=========================
 
 .. automodule:: linex2metaspace
    :members:

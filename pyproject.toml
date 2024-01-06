@@ -53,5 +53,6 @@ docs = [
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
     "metaspace2020",
-    "metaspace-converter"
+    "metaspace-converter",
+    "nbsphinx"
 ]
