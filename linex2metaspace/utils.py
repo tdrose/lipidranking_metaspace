@@ -187,3 +187,68 @@ def get_component(net: Union[nx.Graph, nx.MultiGraph], position=-1) -> Union[nx.
     order = np.argsort(np.array([len(x) for x in cc]))
 
     return nx.induced_subgraph(net, cc[order[position]])
+
+import pandas as pd
+import numpy as np
+
+def candidate_selection(ann: pd.DataFrame, ion_network: nx.Graph, cutoff: int=1) -> pd.DataFrame:
+    """
+    Get the most likely candidate lipids per annotation from an ion network.
+
+    Args:
+        ann: Annotation table (as returned by ``make_lipid_networks`` function). 
+            New information will be added as columns to a copy of this table
+        ion_network: Ion (annotation) network from which lipidr anking iformation is extracted 
+            (as returned by ``make_lipid_networks`` function)
+        cutoff: Number of most likely candidate lipids to be extracted per annotation.
+            We recommend to use the default value of 1 (as evaluated for the pbulication).
+
+    Returns:
+        A extended copy of the ``ann`` annotation table with the following new columns:
+        
+        * `is_ranked` stores whether a ranking could be performed for this annotation. 
+          E.g. if none of the lipid candidates had any connections, ranking was not performed 
+          for this lipid.
+        * `utilized_sum_species` provides a list of all lipids that were used for the ranking.
+        * `ranked_lipids` contains all lipids with at least one connection during 
+          bootstrapping ranked in descending order.
+        * `candidates` contains a list of lipids as candidates molecules per annotation. 
+          The number of lipids is decided by the `cutoff` parameter 
+          (number of lipids used as candidates.)
+    """
+    
+    parsed_annotations = ann.copy()
+
+    ranked_lipids = {}
+    is_ranked = {}
+    utilized_sum_species = {}
+    candidates = {}
+
+    # Loop over ions in network
+    for ion in ion_network.nodes():
+        
+        # In this case the ion did not have any connections in the network
+        # and the method was not able to rank the lipids
+        if all(ion_network.nodes[ion]['sum_species'].values == 0):
+            
+            is_ranked[ion] = False
+            ranked_lipids[ion] = np.nan
+            utilized_sum_species[ion] = "|".join(ion_network.nodes[ion]['sum_species'].index)
+            candidates[ion] = np.nan
+        else:
+            ion_ranking = ion_network.nodes[ion]['sum_species']
+            
+            # Only show lipids in ranking which have had at least one neighbor
+            ion_ranking = ion_ranking[ion_ranking > 0]
+            
+            is_ranked[ion] = True
+            ranked_lipids[ion] = "|".join(ion_ranking.index)
+            utilized_sum_species[ion] = "|".join(ion_network.nodes[ion]['sum_species'].index)
+            candidates[ion] = np.array(ion_network.nodes[ion]['sum_species'].index)[:cutoff]
+
+    parsed_annotations['is_ranked'] = pd.Series(is_ranked)
+    parsed_annotations['utilized_sum_species'] = pd.Series(utilized_sum_species)                    
+    parsed_annotations['ranked_lipids'] = pd.Series(ranked_lipids)
+    parsed_annotations['candidates'] = pd.Series(candidates)
+
+    return parsed_annotations

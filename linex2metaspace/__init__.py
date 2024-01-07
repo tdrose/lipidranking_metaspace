@@ -23,7 +23,8 @@ from .utils import (
     logfc_condition_matrices,
     nudge,
     transform_annotations_to_list,
-    get_component
+    get_component,
+    candidate_selection
 )
 from .vis import (
     lipid_bubble_plot,
@@ -52,6 +53,7 @@ __all__ = [
     "nudge",
     "transform_annotations_to_list",
     "get_component",
+    "candidate_selection",
     "lipid_bubble_plot",
     "plot_ion_network"
 ]
