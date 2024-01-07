@@ -20,17 +20,17 @@ Have a look at the provided examples for a detailed description of the package u
    :maxdepth: 1
    :caption: Example workflows
 
-   examples/python_client_annotation
+   examples/metaspace_annotation_ranking
 
 
 .. toctree::
    :maxdepth: 1
    :caption: API reference:
-   
+
    api
    
 
 .. _METASPACE: https://metaspace2020.eu/
-.. _METASPACE python client: https://github.com/metaspace2020/metaspace/tree/master/metaspace/python-client
+.. _METASPACE python client: https://metaspace2020.readthedocs.io/en/latest/
 .. _metaspace-converter: https://metaspace2020.github.io/metaspace-converter/index.html
 .. _LINEX2: https://exbio.wzw.tum.de/linex/
