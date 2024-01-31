@@ -1,11 +1,8 @@
 # LINEX2 for METASPACE data
 
-Create and analyze lipid networks to work with METASPACE/SpaceM data.
+Create and analyze lipid networks to work with [METASPACE](https://metaspace2020.eu/) spatial lipidomics data or spatial single-cell lipidomics data ([SpaceM](https://doi.org/10.1038/s41592-021-01198-0)).
 
-The primary application for now is the ranking of lipid annotations.
+This package is a work in progress, a publication and extended documentation will be available soon.
+Until then, if you use this package, please cite the following preprint: [Rose et al. "METASPACE: A community-populated knowledge base for spatial metabolomics"](https://doi.org/10.1101/539478 )
 
-Check the `ranking_lipids` notebook for details and intructions.
-
-Everything is built on the [LINEX2 method](https://doi.org/10.1093/bib/bbac572).
-
-
+The package was built, by extending the [LINEX2 method](https://doi.org/10.1093/bib/bbac572) for creating dataset-specific lipid metabolic networks from lipidomics data.
